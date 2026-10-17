@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Open in Novig</title>
+<style>
+  :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --btn:#1c7ed6; --btnfg:#fff; --line:#ddd; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141414; --fg:#eee; --muted:#999; --btn:#4dabf7; --btnfg:#0b1a26; --line:#333; } }
+  body { background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,sans-serif; margin:0; padding:24px 16px; text-align:center; }
+  h1 { font-size:20px; margin:24px 0 8px; }
+  p { color:var(--muted); margin:0 0 20px; }
+  a.btn { display:block; max-width:340px; margin:12px auto; padding:14px 16px; border-radius:10px; text-decoration:none; font-weight:600; }
+  a.app { background:var(--btn); color:var(--btnfg); }
+  a.web { border:1px solid var(--line); color:var(--fg); }
+</style>
+</head>
+<body>
+<h1 id="title">Opening Novig…</h1>
+<p id="note">If the app doesn't open, tap a button.</p>
+<a class="btn app" id="app" href="#">Open in the Novig app</a>
+<a class="btn web" id="web" href="https://novig.com/">Open on novig.com</a>
+<script>
+// Novig bet-slip forwarder. Discord only links http(s), and Novig's app doesn't claim
+// novig.com links on Android, so this page hands the bet slip to the app itself.
+//   ?o=<outcome id>&p=<partner id>&r=<referral code>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var outcome = q.get("o") || "";
+  var partner = q.get("p") || "novig";
+  var referral = q.get("r") || "";
+  var title = document.getElementById("title");
+  // Only Novig outcome ids and simple codes: this page must never forward anywhere else
+  var ok = /^[0-9a-f-]{36}$/i.test(outcome) && /^[\w-]{1,64}$/.test(partner) && /^[\w-]{0,64}$/.test(referral);
+  if (!ok) {
+    title.textContent = "This link is broken";
+    document.getElementById("note").textContent = "It doesn't name a Novig bet.";
+    document.getElementById("app").style.display = "none";
+    return;
+  }
+  var path = "events/" + outcome + "/" + encodeURIComponent(partner);
+  var query = referral ? "?referralCode=" + encodeURIComponent(referral) : "";
+  var web = "https://novig.com/" + path + query;
+  var android = /Android/i.test(navigator.userAgent);
+  var ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Android: an intent link opens the app if it's installed, otherwise the browser falls back to the web slip
+  var app = android
+    ? "intent://" + path + query + "#Intent;scheme=novigapp;S.browser_fallback_url=" + encodeURIComponent(web) + ";end"
+    : "novigapp://" + path + query;
+  document.getElementById("app").href = app;
+  document.getElementById("web").href = web;
+  if (android || ios) {
+    location.href = app;
+    if (ios) setTimeout(function () { location.href = web; }, 1500);
+  } else {
+    location.replace(web);  // desktop: no app to open
+  }
+})();
+</script>
+</body>
+</html>
